@@ -49,4 +49,3 @@ Mtrain.equals(indicatorMatrix)
 
 ax = sns.heatmap(indicatorMatrix)
 ax
-
