@@ -17,10 +17,16 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import griddata
 import seaborn as sns
 
-peakAlignement = []
+from itertools import cycle
+cycol = cycle('bgrcmk')
+
+
 
 def getRawDataAslist(filename):
-    print(filename)
+#Input: IMC/MMS raw file (has to be a .csv file with "," as separator)
+#Read the matrix contain in the file and concatenate rows in a single list
+#Output: List
+    print("Reading: " + filename )
     rawMat = pd.read_csv(filename,low_memory=False, sep=",", comment='#')
     rawMat = rawMat.drop(rawMat.index[[0]])
     rawMat = rawMat.drop(rawMat.columns[[0,1,2]], axis=1)
@@ -28,164 +34,102 @@ def getRawDataAslist(filename):
     rawList = rawMat.flatten()
     return rawList.tolist()
 
+
 def getRawDataMatrix(basepath):
+#Input: The path to a folder containing IMC/MMS raw file
+#Use "getRawDataAslist" to generate a matrix with the datalist from one file as a row and one row for each files
+#Output: list of lists, and name of the files
     mat = []
     fileNames = []
-    for entry in sorted(os.listdir(basepath)):
-        if os.path.isfile(os.path.join(basepath, entry)):
-            if "lock" not in entry:
+    for entry in sorted(os.listdir(basepath)): #for every object in the directory
+        if os.path.isfile(os.path.join(basepath, entry)): #is it is a file
+            if "lock" not in entry: #filter out locked files
                 mat.append(getRawDataAslist(basepath+entry))
                 fileNames.append(entry)
     return mat,fileNames
 
+
 def midpoint(p1, p2):
+#Input: two set of coordinates in a bi-dimentional space (can be list or tuples)
+#Return: coordinates of the midpoint
     return [(p1[0]+p2[0])/2, (p1[1]+p2[1])/2]
 
 
 
 
+###### Perform Hierachical clustering on raw data ##########
+
+print("---==Perfoming hierchical clustering==--- \n")
 M,fileNames = getRawDataMatrix("Data/candy_raw/")
-
 linked = linkage(M, 'single')
+alignementOrder = np.delete(np.array(linked),np.s_[2,3],1).astype(int) #Get the pair of peak lists to align and in which order to align
 
-t = to_tree(linked)
-print(t.pre_order())
 
-alignementOrder = np.delete(np.array(linked),np.s_[2,3],1).astype(int)
-print(alignementOrder)
+
 
 # plt.figure(figsize=(10, 7))
 # dendrogram(linked, labels=range(0,6))
 # plt.show()
 
+print("\n--==Performing pairwise peak alignment==--\n")
 
-
-
-
-nodesAlignements = {}
-distanceThreshold = 2 #minimal distance for pairing 2 points
-alignementIndex = len(fileNames)-1
+nodesAlignements = {} #dictionary containing the alignement for each leaf and node of the tree obtained via Hierachical clustering
+distanceThreshold = 3 #minimal distance for pairing 2 points
+alignementIndex = len(fileNames)-1 #dictionnary key of the new peak lists resulting of the alignement of two peak list
 
 for p in range(len(fileNames)):
     pl = pd.read_csv("Data/peak_identification/"+fileNames[p],low_memory=False, sep="\t", comment='#')[['t','r']]
-    pl["t"] *= 100
-
+    pl["t"] *= 100 #To normalize the "r" and "t" axis
     pl = pl.to_numpy().tolist()
-    print(pl)
     nodesAlignements[p] = pl
 
 
-m = Munkres()
+m = Munkres() # create a Munkres object
 
-for pairs in alignementOrder: #for each node in the tree
-    print(len(nodesAlignements[pairs[0]]))
-    print(len(nodesAlignements[pairs[1]]))
-    if len(nodesAlignements[pairs[0]]) > len(nodesAlignements[pairs[1]]):
+for pairs in alignementOrder: #for each node in the tree from bottom to top
+
+
+    if len(nodesAlignements[pairs[0]]) > len(nodesAlignements[pairs[1]]): # The matrix has to has more row than collumns
         pairs = [pairs[1],pairs[0]]
-    print(pairs)
+
     alignementIndex+=1
     nodesAlignements[alignementIndex] = []
-    print(alignementIndex)
     distMat = distance_matrix(nodesAlignements[pairs[0]], nodesAlignements[pairs[1]])
 
 
-
-##probleme dans l'ordre des axes x y dans la matrice de distance
     indexes = m.compute(distMat)
-    total = 0
+    nPaired = 0
     for row, column in indexes:
         dist = distance.euclidean(nodesAlignements[pairs[0]][row],nodesAlignements[pairs[1]][column])
 
         if dist<distanceThreshold:
-            print("Paired")
+            nPaired += 1
             midpointCoordinates = midpoint(nodesAlignements[pairs[0]][row],nodesAlignements[pairs[1]][column])
             nodesAlignements[alignementIndex].append(midpointCoordinates)
         else:
-            print("Unique")
             nodesAlignements[alignementIndex].append(nodesAlignements[pairs[0]][row])
             nodesAlignements[alignementIndex].append(nodesAlignements[pairs[1]][column])
 
+    print("\nPeaklist {} and {} have been aligned: \nPeaks paired: {} Total peaks in aligned peaklist: {}\n ".format(pairs[0],pairs[1],nPaired,len(nodesAlignements[alignementIndex])))
+    plt.scatter(np.array(nodesAlignements[pairs[0]]).transpose()[0], np.array(nodesAlignements[pairs[0]]).transpose()[1], c=next(cycol),marker=".")
+    plt.scatter(np.array(nodesAlignements[pairs[1]]).transpose()[0], np.array(nodesAlignements[pairs[1]]).transpose()[1], c=next(cycol),marker=".")
 
-alignementEx = pd.read_csv("Data/peakAlignement.txt",low_memory=False, sep=";")
-alignementEx["t"] *= 100
-alignementEx["r"] *= 500
 
-print(alignementEx)
+
+if (input("Print plot ? (Y/N)") == "Y"):
+    plt.scatter(np.array(nodesAlignements[10]).transpose()[0], np.array(nodesAlignements[10]).transpose()[1], c="red",marker = "X" )
+    plt.show()
 
 # sns.heatmap(distMat)
 # plt.show()
 
-plt.scatter(np.array(nodesAlignements[0]).transpose()[0], np.array(nodesAlignements[0]).transpose()[1], c="purple")
-plt.scatter(np.array(nodesAlignements[1]).transpose()[0], np.array(nodesAlignements[1]).transpose()[1], c="blue")
-plt.scatter(np.array(nodesAlignements[2]).transpose()[0], np.array(nodesAlignements[2]).transpose()[1], c="red")
-plt.scatter(np.array(nodesAlignements[3]).transpose()[0], np.array(nodesAlignements[3]).transpose()[1], c="orange")
-plt.scatter(np.array(nodesAlignements[4]).transpose()[0], np.array(nodesAlignements[4]).transpose()[1], c="yellow")
-plt.scatter(np.array(nodesAlignements[5]).transpose()[0], np.array(nodesAlignements[5]).transpose()[1], c="brown")
 
+outputFile = input("Save final aligned peaks list as:  ")
+f = open(outputFile, "w")
 
-# plt.scatter(alignementEx["t"], alignementEx["r"], c="red",marker = "1" )
-plt.scatter(np.array(nodesAlignements[10]).transpose()[0], np.array(nodesAlignements[10]).transpose()[1], c="green",marker = "2" )
-plt.show()
+finalAlignement = max(nodesAlignements, key=nodesAlignements.get) # key of the final alignement of all the peaklists
 
-
-
-
-
-
-print(nodesAlignements[10])
-
-print(len(nodesAlignements[10]))
-
-
-
-
-
-
-
-
-# def getLinkageConstrain(df):
-#
-#     cannot_link = []
-#     group = []
-#     grpName = df["measurement_name"].iloc[0]
-#     print(grpName)
-#     for index, row in df.iterrows():
-#         if grpName == row["measurement_name"]:
-#             group.append(index)
-#         else:
-#             grpName = row["measurement_name"]
-#             group = list(itertools.combinations(group, 2))
-#             cannot_link += group
-#             group = []
-#
-#     group = list(itertools.combinations(group, 2))
-#     cannot_link += group
-#     return cannot_link
-#
-# def getMergePeakLists(basepath):
-#     pL = []
-#     for entry in os.listdir(basepath):
-#         if os.path.isfile(os.path.join(basepath, entry)):
-#             pL1 = pd.read_csv(basepath+entry,low_memory=False, sep="\t", comment='#')
-#
-#             pL.append(pL1)
-#
-#
-#     return pd.concat(pL).reset_index()
-#
-# TotPeakList = getMergePeakLists('Data/peax_data/testing_peax/')
-# cannot_link = getLinkageConstrain(TotPeakList)
-# peaksCoordinates = TotPeakList[['t','r']].to_numpy()
-# clusters, centers = cop_kmeans(dataset=peaksCoordinates, k=25, cl=cannot_link)
-#
-# print(clusters)
-#
-# print(len(peaksCoordinates))
-
-
-# fig, ax = plt.subplots()
-# ax.scatter(peaksCoordinates.transpose()[0] , peaksCoordinates.transpose()[1])
-# for i, txt in enumerate(clusters):
-#     ax.annotate(txt,  (peaksCoordinates.transpose()[0][i] , peaksCoordinates.transpose()[1][i]))
-#
-# plt.show()
+f.write("\"t\" \"r\"\n")
+for i in range(len(nodesAlignements[finalAlignement])):
+    f.write("\"{}\"\t{} {}\n".format(i,round(nodesAlignements[finalAlignement][i][0],3), round(nodesAlignements[finalAlignement][i][1],3)))
+f.close()
