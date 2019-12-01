@@ -1,11 +1,11 @@
 import os
+import sys
 from tkinter import Tk
 import tkinter.filedialog as fd
 
 
 
 
-print(os.getcwd())
 def peaxCommandMaker(inputDir, outputDir, paramFile):
     for inputFile in sorted(os.listdir(inputDir)):
         if os.path.isfile(os.path.join(inputDir, inputFile)):
@@ -22,11 +22,13 @@ def peaxCommandMaker(inputDir, outputDir, paramFile):
 
 
 
-Tk().withdraw()
-ipD = fd.askdirectory()
-opD = fd.askdirectory()
-paF = fd.askopenfilename()
+# Tk().withdraw()
+# ipD = fd.askdirectory()
+# opD = fd.askdirectory()
+# paF = fd.askopenfilename()
 
 
+if __name__ == "__main__":
+    peaxCommandMaker(sys.argv[1], sys.argv[2],  sys.argv[3])
 
-peaxCommandMaker(ipD, opD, paF)
+# peaxCommandMaker(ipD, opD, paF)
