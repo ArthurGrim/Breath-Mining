@@ -5,8 +5,7 @@ import seaborn as sns; sns.set()
 
 basePath = "Data/"
 peaxDataDirectory = basePath + "peax_data/candy_peax/"
-peakAlignmentsPath = basePath + "peak_alignment.txt"
-indicatorMatrixDirectory = basePath + "test_data/indicator_matrix_test.txt"
+peakAlignmentsPath = basePath + "peaksList.txt"
 
 
 def getPeaxDataFrame():
@@ -37,15 +36,13 @@ i = 0
 for peak in peakAlignments:
     trainIndices = []
     for peak2 in peakData:
-        if comparePeeks(peak[0], peak2[2], peak[1]*100, peak2[3]):
+        if comparePeeks(peak[0], peak2[2]*100, peak[1], peak2[3]):
             trainIndices.append(peak2[0])
     for index in trainIndices:
         Mtrain[index][i] = 1
     i+=1
 
 # Test indicator matrix
-indicatorMatrix = pd.read_csv(indicatorMatrixDirectory, sep="\t", low_memory=False)
-Mtrain.equals(indicatorMatrix)
 
-ax = sns.heatmap(indicatorMatrix)
+ax = sns.heatmap(Mtrain)
 ax
