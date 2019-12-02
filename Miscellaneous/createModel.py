@@ -52,4 +52,3 @@ fileCategories = pd.read_csv(fileCategoriesPath, sep='\t')
 numColumns = transpose.shape[1]
 transpose.insert(numColumns, numColumns, fileCategories['file'])
 transpose.to_csv(path_or_buf = 'indicatorMatrix.csv')
-
