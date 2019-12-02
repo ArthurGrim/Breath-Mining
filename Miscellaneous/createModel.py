@@ -50,6 +50,8 @@ transpose = Mtrain.transpose()
 # add row with category names
 fileCategories = pd.read_csv(fileCategoriesPath, sep='\t')
 numColumns = transpose.shape[1]
-transpose.insert(numColumns, numColumns, fileCategories['file'])
+
+transpose.insert(numColumns, numColumns, fileCategories['candy'].to_numpy())
+
 transpose.to_csv(path_or_buf = 'indicatorMatrix.csv')
 
