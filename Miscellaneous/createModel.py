@@ -6,6 +6,7 @@ import seaborn as sns; sns.set()
 basePath = "Data/"
 peaxDataDirectory = basePath + "peax_data/candy_peax/"
 peakAlignmentsPath = basePath + "peaksList.txt"
+fileCategoriesPath = basePath + "class_labels.txt"
 
 
 def getPeaxDataFrame():
@@ -43,6 +44,12 @@ for peak in peakAlignments:
     i+=1
 
 # Test indicator matrix
-
 ax = sns.heatmap(Mtrain)
 ax
+transpose = Mtrain.transpose()
+# add row with category names
+fileCategories = pd.read_csv(fileCategoriesPath, sep='\t')
+numColumns = transpose.shape[1]
+transpose.insert(numColumns, numColumns, fileCategories['file'])
+transpose.to_csv(path_or_buf = 'indicatorMatrix.csv')
+
