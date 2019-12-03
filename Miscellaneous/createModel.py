@@ -57,16 +57,38 @@ def createIndicatorMatrix(alignments, data):
      
 
 Mtrain = createIndicatorMatrix(peakAlignments, peakData)
+fileCategoriesNp = pd.read_csv(fileCategoriesPath, sep='\t').to_numpy()
 
-# Create heat map
-ax = sns.heatmap(Mtrain)
+
+citrusMatrix = pd.DataFrame()
+originalMatrix = pd.DataFrame()
+
+classes, indexes = np.unique(fileCategoriesNp[:,1], return_inverse=True)
+
+for c in classes:
+    print(c)
+    indexes = np.where(fileCategoriesNp[:,1] == c)
+    for j in indexes:
+        fileName = fileCategoriesNp[j,0]
+        print(fileName)
+        if c == 'citrus':
+            citrusMatrix = citrusMatrix.append(Mtrain[fileName])
+        elif c == 'halls':
+            originalMatrix = originalMatrix.append(Mtrain[fileName])
+    
+    
+ax = sns.heatmap(citrusMatrix)
+ax.set_title('citrus heat map')
 ax
+
+bx = sns.heatmap(originalMatrix)
+bx.set_title('halls heat map')
+bx
 
 # transpose the matrix to obtain the X matrix
 transpose = Mtrain.transpose()
 
 # add row with category names (y)
-fileCategories = pd.read_csv(fileCategoriesPath, sep='\t')
 numRows = transpose.shape[0]
 numColumns = transpose.shape[1]
 transpose.insert(numColumns, numColumns, fileCategories['candy'].to_numpy())
