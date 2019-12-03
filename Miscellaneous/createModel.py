@@ -2,6 +2,11 @@ import os
 import numpy as np
 import pandas as pd
 import seaborn as sns; sns.set()
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
 
 basePath = "Data/"
 peaxDataDirectory = basePath + "peax_data/candy_peax/"
@@ -49,9 +54,28 @@ ax
 transpose = Mtrain.transpose()
 # add row with category names
 fileCategories = pd.read_csv(fileCategoriesPath, sep='\t')
+numRows = transpose.shape[0]
 numColumns = transpose.shape[1]
 
 transpose.insert(numColumns, numColumns, fileCategories['candy'].to_numpy())
 
 transpose.to_csv(path_or_buf = 'indicatorMatrix.csv')
 
+X_train = transpose.iloc[:, 0:numColumns-1].values
+y_train = transpose.iloc[:, -1].values
+
+
+a, X_test, b, y_test = train_test_split(X_train, y_train, test_size = 0.2, random_state = 0)
+
+labelencoder = LabelEncoder()
+y_train = labelencoder.fit_transform(y_train)
+y_test = labelencoder.fit_transform(y_test)
+print(y_train)
+
+regressor = RandomForestClassifier(n_estimators=20, random_state=0)
+regressor.fit(X_train, y_train)
+y_pred = regressor.predict(X_test)
+
+print(confusion_matrix(y_test,y_pred))
+print(classification_report(y_test,y_pred))
+print(accuracy_score(y_test, y_pred))
