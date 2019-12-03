@@ -130,9 +130,9 @@ def main(rawDir, peaksDir):
 
     finalAlignement = max(nodesAlignements, key=nodesAlignements.get) # key of the final alignement of all the peaklists
 
-    f.write("\"t\" \"r\"\n")
+    f.write("\"t\"\t\"r\"\n")
     for i in range(len(nodesAlignements[finalAlignement])):
-        f.write("\"{}\"\t{} {}\n".format(i,round(nodesAlignements[finalAlignement][i][0],3), round(nodesAlignements[finalAlignement][i][1],3)))
+        f.write("\"{}\"\t{}\t{}\n".format(i,round(nodesAlignements[finalAlignement][i][0],3), round(nodesAlignements[finalAlignement][i][1],3)))
     f.close()
 
 
