@@ -57,9 +57,9 @@ def midpoint(p1, p2):
 
 
 
-def main(rawDir, peaksDir):
+def main(rawDir, peaksDir, distanceThreshold):
     ###### Perform Hierachical clustering on raw data ##########
-
+    distanceThreshold = int(distanceThreshold)#minimal distance for pairing 2 points
     print("---==Perfoming hierchical clustering==--- \n")
     M,fileNames = getRawDataMatrix(rawDir)
     linked = linkage(M, 'single')
@@ -73,7 +73,7 @@ def main(rawDir, peaksDir):
     print("\n--==Performing pairwise peak alignment==--\n")
 
     nodesAlignements = {} #dictionary containing the alignement for each leaf and node of the tree obtained via Hierachical clustering
-    distanceThreshold = 2 #minimal distance for pairing 2 points
+
     alignementIndex = len(fileNames)-1 #dictionnary key of the new peak lists resulting of the alignement of two peak list
 
     for p in range(len(fileNames)):
@@ -146,4 +146,4 @@ def main(rawDir, peaksDir):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2])
+    main(sys.argv[1], sys.argv[2], sys.argv[3])

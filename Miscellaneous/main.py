@@ -36,7 +36,9 @@ def launchPeakAlignment():
     peaksDir = fd.askdirectory(initialdir = os.getcwd(),title = "Select directory of peakLists")
     peaksDir = peaksDir.replace(os.getcwd()+"/","")+"/"
     print("Selected Dir: "+peaksDir)
-    os.system("python3 peakAlignments.py " + rawDir + " " + peaksDir )
+
+    thresh = input("Minimal distance to merge two peaks (default = 5) : ")
+    os.system("python3 peakAlignments.py " + rawDir + " " + peaksDir + " " + thresh )
 
 def launchIndicatorMatrix():
     print("not ready")
