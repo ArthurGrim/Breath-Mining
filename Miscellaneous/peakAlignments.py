@@ -19,7 +19,7 @@ from scipy.interpolate import griddata
 import seaborn as sns
 
 from itertools import cycle
-cycol = cycle('bgrcmk')
+cycol = cycle('bbggrrccmmkk')
 
 
 
@@ -66,16 +66,14 @@ def main(rawDir, peaksDir):
     alignementOrder = np.delete(np.array(linked),np.s_[2,3],1).astype(int) #Get the pair of peak lists to align and in which order to align
 
 
-
-
     # plt.figure(figsize=(10, 7))
-    # dendrogram(linked, labels=range(0,6))
+    # dendrogram(linked, labels=range(0,len(alignementOrder)))
     # plt.show()
 
     print("\n--==Performing pairwise peak alignment==--\n")
 
     nodesAlignements = {} #dictionary containing the alignement for each leaf and node of the tree obtained via Hierachical clustering
-    distanceThreshold = 3 #minimal distance for pairing 2 points
+    distanceThreshold = 2 #minimal distance for pairing 2 points
     alignementIndex = len(fileNames)-1 #dictionnary key of the new peak lists resulting of the alignement of two peak list
 
     for p in range(len(fileNames)):
@@ -89,7 +87,8 @@ def main(rawDir, peaksDir):
 
     for pairs in alignementOrder: #for each node in the tree from bottom to top
 
-
+        unusedPeaks = list(range(len(nodesAlignements[pairs[1]])))
+        usedPeaks = []
         if len(nodesAlignements[pairs[0]]) > len(nodesAlignements[pairs[1]]): # The matrix has to has more row than collumns
             pairs = [pairs[1],pairs[0]]
 
@@ -101,8 +100,9 @@ def main(rawDir, peaksDir):
         indexes = m.compute(distMat)
         nPaired = 0
         for row, column in indexes:
-            dist = distance.euclidean(nodesAlignements[pairs[0]][row],nodesAlignements[pairs[1]][column])
 
+            dist = distance.euclidean(nodesAlignements[pairs[0]][row],nodesAlignements[pairs[1]][column])
+            usedPeaks.append(column)
             if dist<distanceThreshold:
                 nPaired += 1
                 midpointCoordinates = midpoint(nodesAlignements[pairs[0]][row],nodesAlignements[pairs[1]][column])
@@ -111,14 +111,23 @@ def main(rawDir, peaksDir):
                 nodesAlignements[alignementIndex].append(nodesAlignements[pairs[0]][row])
                 nodesAlignements[alignementIndex].append(nodesAlignements[pairs[1]][column])
 
-        print("\nPeaklist {} and {} have been aligned: \nPeaks paired: {} Total peaks in aligned peaklist: {}\n ".format(pairs[0],pairs[1],nPaired,len(nodesAlignements[alignementIndex])))
-        plt.scatter(np.array(nodesAlignements[pairs[0]]).transpose()[0], np.array(nodesAlignements[pairs[0]]).transpose()[1], c=next(cycol),marker=".")
-        plt.scatter(np.array(nodesAlignements[pairs[1]]).transpose()[0], np.array(nodesAlignements[pairs[1]]).transpose()[1], c=next(cycol),marker=".")
+
+        for i in unusedPeaks:
+            if i in usedPeaks:
+                unusedPeaks.remove(i)
+
+        for j in unusedPeaks:
+            nodesAlignements[alignementIndex].append(nodesAlignements[pairs[1]][j])
+
+        print("\nPeaklist {} (lenght = {}) and {} (lenght = {}) have been aligned: \nPeaks paired: {} Total peaks in aligned peaklist: {}\n ".format(pairs[0],len(nodesAlignements[pairs[0]]),pairs[1],len(nodesAlignements[pairs[1]]),nPaired,len(nodesAlignements[alignementIndex])))
+        plt.scatter(np.array(nodesAlignements[pairs[0]]).transpose()[0], np.array(nodesAlignements[pairs[0]]).transpose()[1], c="b",marker="3")
+        plt.scatter(np.array(nodesAlignements[pairs[1]]).transpose()[0], np.array(nodesAlignements[pairs[1]]).transpose()[1], c="b",marker="3")
 
 
+    finalAlignement = max(nodesAlignements, key=nodesAlignements.get) # key of the final alignement of all the peaklists
 
     if (input("Print plot ? (Y/N)") == "Y"):
-        plt.scatter(np.array(nodesAlignements[10]).transpose()[0], np.array(nodesAlignements[10]).transpose()[1], c="red",marker = "X" )
+        plt.scatter(np.array(nodesAlignements[finalAlignement]).transpose()[0], np.array(nodesAlignements[finalAlignement]).transpose()[1], c="red",marker = "X" )
         plt.show()
 
     # sns.heatmap(distMat)
@@ -128,11 +137,9 @@ def main(rawDir, peaksDir):
     outputFile = input("Save final aligned peaks list as:  ")
     f = open(outputFile, "w")
 
-    finalAlignement = max(nodesAlignements, key=nodesAlignements.get) # key of the final alignement of all the peaklists
-
-    f.write("\"t\" \"r\"\n")
+    f.write("\"t\"\t\"r\"\n")
     for i in range(len(nodesAlignements[finalAlignement])):
-        f.write("\"{}\"\t{} {}\n".format(i,round(nodesAlignements[finalAlignement][i][0],3), round(nodesAlignements[finalAlignement][i][1],3)))
+        f.write("\"{}\"\t{}\t{}\n".format(i,round(nodesAlignements[finalAlignement][i][0],3), round(nodesAlignements[finalAlignement][i][1],3)))
     f.close()
 
 
