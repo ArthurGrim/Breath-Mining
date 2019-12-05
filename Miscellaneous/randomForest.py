@@ -7,10 +7,11 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import StandardScaler
 from scipy.spatial import distance
+import sys
 
 basePath = "Data/"
 outPath = "out/"
-peaxDataDirectory = basePath + "training_peakIdentification/" #candy_peax_processed/candy_peax
+peaxDataPath = basePath + "training_peakIdentification/" #candy_peax_processed/candy_peax
 fileCategoriesPath = basePath + "labels_training.csv"
 testingPeaxPath = basePath + "testing_peakIdentification/"
 testingPeakAlignmentsPath = basePath + "testing_peakList.csv"
@@ -21,7 +22,6 @@ predictedLabelsPath = outPath + "predictedLabels.csv"
 def getIntensityMatrixAndLabels(peakListsFolder, peakAlignmentFile, isTraining = 1,distanceThreshold = 5):
 
     PA = pd.read_csv(peakAlignmentFile,low_memory=False, sep="\t", comment='#')
-    peakIndices = list(PA.index.values)
     peakCoor = PA[['t','r']].to_numpy().tolist()
 
     fileNamesList = []
@@ -31,7 +31,7 @@ def getIntensityMatrixAndLabels(peakListsFolder, peakAlignmentFile, isTraining =
     for entry in sorted(os.listdir(peakListsFolder)): #for every object in the directory
         if os.path.isfile(os.path.join(peakListsFolder, entry)): #is it is a file
             if "lock" not in entry: #filter out locked files
-                PL = pd.read_csv(peakListsFolder+"/"+entry,low_memory=False, sep="\t", comment='#')
+                PL = pd.read_csv(peakListsFolder+entry,low_memory=False, sep="\t", comment='#')
                 PLCoordinates.append(PL[['t','r']].to_numpy().tolist())
                 PLCIntensities.append(PL['signal'].to_numpy().tolist())
                 fileNamesList.append(PL.to_numpy()[1][0])
@@ -80,49 +80,43 @@ def getAllCsvAsDataFrame(path, sep):
             dfs.append(data)
     return pd.concat(dfs, sort=False)
 
-Mtrain, labels = getIntensityMatrixAndLabels(peaxDataDirectory,peakAlignmentsPath)
+def main(peakListsFolder = peaxDataPath, peakAlignmentFile = peakAlignmentsPath, testPeaksList = testingPeakAlignmentsPath, distanceThreshold=5):
+    Mtrain, y_train = getIntensityMatrixAndLabels(peakListsFolder,peakAlignmentFile)
+    
+    scaler = StandardScaler()
+    scaler.fit(Mtrain)
+    X_train = scaler.transform(Mtrain)
+    
+    sns.heatmap(X_train, yticklabels=y_train)
+    plt.show()
+    
+    # encode y value to decimal values
+    labelencoder = LabelEncoder()
+    y_train = labelencoder.fit_transform(y_train)
+    
+    # Create Mtest matrix
+    testPeakData = getAllCsvAsDataFrame(testPeaksList, '\t').to_numpy()
+    X_test, labels = getIntensityMatrixAndLabels(testingPeaxPath,peakAlignmentsPath)
+    
+    scaler = StandardScaler()
+    scaler.fit(X_test)
+    X_test = scaler.transform(X_test)
+    
+    ax = sns.heatmap(X_test)
+    ax
+    
+    # apply the random forest classifier
+    regressor = RandomForestClassifier(n_estimators=1000, random_state=0)
+    regressor.fit(X_train, y_train)
+    y_pred = regressor.predict(X_test)
+    
+    y_pred = list(labelencoder.inverse_transform(y_pred))
+    fileNames = np.unique(testPeakData[:,0])
+    
+    f = open(predictedLabelsPath, "w")
+    for i in range(len(fileNames)):
+        f.write("{}\t{}\n".format(fileNames[i],y_pred[i]))
+    f.close()
 
-scaler = StandardScaler()
-scaler.fit(Mtrain)
-Mtrain = scaler.transform(Mtrain)
-
-sns.heatmap(Mtrain, yticklabels= labels)
-plt.show()
-
-# transpose the matrix to obtain the X matrix
-transpose = Mtrain.transpose()
-
-# separate x and y
-X_train = Mtrain
-y_train = labels
-
-# encode y value to decimal values
-labelencoder = LabelEncoder()
-y_train = labelencoder.fit_transform(y_train)
-
-# Create Mtest matrix
-testPeakAlignments = pd.read_csv(testingPeakAlignmentsPath, sep='\t').to_numpy()
-testPeakData = getAllCsvAsDataFrame(testingPeaxPath, '\t').to_numpy()
-Mtest, labels = getIntensityMatrixAndLabels(testingPeaxPath,peakAlignmentsPath)
-
-scaler = StandardScaler()
-scaler.fit(Mtest)
-Mtest = scaler.transform(Mtest)
-
-ax = sns.heatmap(Mtest)
-ax
-
-X_test = Mtest
-
-# apply the random forest classifier
-regressor = RandomForestClassifier(n_estimators=1000, random_state=0)
-regressor.fit(X_train, y_train)
-y_pred = regressor.predict(X_test)
-
-y_pred = list(labelencoder.inverse_transform(y_pred))
-fileNames = np.unique(testPeakData[:,0])
-
-f = open(predictedLabelsPath, "w")
-for i in range(len(fileNames)):
-    f.write("{}\t{}\n".format(fileNames[i],y_pred[i]))
-f.close()
+if __name__ == "__main__":
+    main(sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4]))

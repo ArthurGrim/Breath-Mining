@@ -49,18 +49,37 @@ def launchNeuralNetwork():
     peaksDir = peaksDir.replace(os.getcwd()+"/","")+"/"
     print("Selected Dir: "+peaksDir)
 
-    print("Select peak alignement file")
-    peakAlignmentFile = fd.askopenfilename(initialdir = os.getcwd(),title = "Select peak alignement file")
+    print("Select peak alignment file")
+    peakAlignmentFile = fd.askopenfilename(initialdir = os.getcwd(),title = "Select peak alignment file")
     peakAlignmentFile = peakAlignmentFile.replace(os.getcwd()+"/","")
     print("Selected Dir: "+peakAlignmentFile)
 
     thresh = input("Maximal peak detection distance (default = 5) : ")
     os.system("python3 neuralNetwork.py " + peaksDir + " " + peakAlignmentFile + " " + thresh )
 
+def launchRandomForest():
+    print("Select directory of training peak lists")
+    peaksDir = fd.askdirectory(initialdir = os.getcwd(),title = "Select directory of training peak lists")
+    peaksDir = peaksDir.replace(os.getcwd()+"/","")+"/"
+    print("Selected Dir: "+peaksDir)
+
+    print("Select peak alignment file")
+    peakAlignmentFile = fd.askopenfilename(initialdir = os.getcwd(),title = "Select peak alignment file")
+    peakAlignmentFile = peakAlignmentFile.replace(os.getcwd()+"/","")
+    print("Selected Dir: "+peakAlignmentFile)
+    
+    print("Select directory of testing peak lists")
+    testPeaksDir = fd.askdirectory(initialdir = os.getcwd(),title = "Select directory of testing peak lists")
+    testPeaksDir = testPeaksDir.replace(os.getcwd()+"/","")+"/"
+    print("Selected Dir: "+testPeaksDir)
+
+    thresh = input("Maximal peak detection distance (default = 5) : ")
+    os.system("python3 randomForest.py " + peaksDir + " " + peakAlignmentFile + " " + testPeaksDir + " " + thresh )
+
 run = True
 while(run == True):
     print("### MAIN MENU ###")
-    print("0 = Exit\n1 = Perform Peak Identification (via PEAX)\n2 = Perform Peak Alignement\n3 = Train an MLP classifier and predict")
+    print("0 = Exit\n1 = Perform Peak Identification (via PEAX)\n2 = Perform Peak Alignement\n3 = Train an MLP classifier and predict\n4 = Train a Random Forest and predict")
     choice = int(input("select option: "))
 
     if(choice==0):
@@ -72,5 +91,7 @@ while(run == True):
         launchPeakAlignment()
     elif(choice==3):
         launchNeuralNetwork()
+    elif(choice==4):
+        launchRandomForest()
     else:
         print("invalid input")
