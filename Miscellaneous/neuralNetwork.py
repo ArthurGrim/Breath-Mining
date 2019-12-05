@@ -8,10 +8,11 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import cross_val_score
+import sys
+import tkinter.filedialog as fd
 
 
 def getIntensityMatrixAndLabels(peakListsFolder,peakAlignmentFile,distanceThreshold = 5):
-    peakListsFolder = "Data/training_peakIdentification"
 
     PA = pd.read_csv("HeavyPeakList.txt",low_memory=False, sep="\t", comment='#')
     peakIndices = list(PA.index.values)
@@ -36,9 +37,12 @@ def getIntensityMatrixAndLabels(peakListsFolder,peakAlignmentFile,distanceThresh
     labelsF = pd.read_csv("Data/labelsTraining.csv",low_memory=False, sep="\t", comment='#')
     for f in fileNamesList:
         r = labelsF.loc[labelsF['file'] == f]
-        labels.append(r.to_numpy().tolist()[0][1])
+        if(r.empty == False):
+            labels.append(r.to_numpy().tolist()[0][1])
+        else:
+            labels.append(f)
 
-    intensityMatrix = []
+    IM = []
 
     for peakIndex in range(len(peakCoor)): #for each peak in the peak alignement file
 
@@ -60,29 +64,62 @@ def getIntensityMatrixAndLabels(peakListsFolder,peakAlignmentFile,distanceThresh
             else:
                 row.append(0)
 
-        intensityMatrix.append(row)
+        IM.append(row)
 
-    return np.array(intensityMatrix).transpose().tolist(), labels
-
-
-
-intensityMatrix, labels = getIntensityMatrixAndLabels("Data/training_peakIdentification","HeavyPeakList.txt",5)
-
-scaler = StandardScaler()
-scaler.fit(intensityMatrix)
-intensityMatrix = scaler.transform(intensityMatrix)
+    return np.array(IM).transpose().tolist(), labels
 
 
-sns.heatmap(intensityMatrix, yticklabels= labels)
-plt.show()
+def main(peakListsFolder,peakAlignmentFile,distanceThreshold=5):
+
+    intensityMatrix, labels = getIntensityMatrixAndLabels(peakListsFolder,peakAlignmentFile,distanceThreshold)
+
+    scaler = StandardScaler()
+    scaler.fit(intensityMatrix)
+    intensityMatrix = scaler.transform(intensityMatrix)
+
+
+    sns.heatmap(intensityMatrix, yticklabels= labels)
+    plt.show()
 
 
 
 
-clf = MLPClassifier(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(8, 2), random_state=1)
-scores = cross_val_score(clf, intensityMatrix, labels, cv=5)
-print ("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() / 2))
+    clf = MLPClassifier(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(8, 2), random_state=1)
+    scores = cross_val_score(clf, intensityMatrix, labels, cv=5)
+    print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() / 2))
 
 
-clfFinal = MLPClassifier(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(8, 2), random_state=1)
-clfFinal.fit(intensityMatrix, labels)
+    clfFinal = MLPClassifier(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(8, 2), random_state=1)
+    clfFinal.fit(intensityMatrix, labels)
+
+    print("Select directory of peaks lists for prediction")
+    predictPeakLists = fd.askdirectory(initialdir = os.getcwd(),title = "Select directory of peaks lists for prediction")
+    predictPeakLists = predictPeakLists.replace(os.getcwd()+"/","")+"/"
+    print("Selected Dir: "+predictPeakLists)
+
+    testingX, testingY  = getIntensityMatrixAndLabels(predictPeakLists,peakAlignmentFile,distanceThreshold)
+    print(len(testingX))
+    print(testingY)
+    scaler.fit(testingX)
+    testingX = scaler.transform(testingX)
+
+
+    prediction = clfFinal.predict(testingX)
+    print(prediction)
+
+
+    outputFile = input("Save prediction as:  ")
+    f = open(outputFile, "w")
+
+    f.write("\"t\"\t\"r\"\n")
+    for i in range(len(prediction)):
+        f.write("{}\t{}\n".format(testingY[i],prediction[i]))
+    f.close()
+
+
+
+
+
+
+if __name__ == "__main__":
+    main(sys.argv[1], sys.argv[2], int(sys.argv[3]))
