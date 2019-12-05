@@ -115,7 +115,7 @@ ax
 X_test = Mtest
 
 # apply the random forest classifier
-regressor = RandomForestClassifier(n_estimators=300, random_state=0)
+regressor = RandomForestClassifier(n_estimators=1000, random_state=0)
 regressor.fit(X_train, y_train)
 y_pred = regressor.predict(X_test)
 
