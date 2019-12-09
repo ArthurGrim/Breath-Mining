@@ -25,6 +25,26 @@ def launchPeakDetection():
 
     os.system("python3 peakIdentification.py " + ipD.replace(os.getcwd()+"/","")+"/" + " " + opD.replace(os.getcwd()+"/","")+"/" + " " + paF.replace(os.getcwd()+"/","")+"/" )
 
+def launchRandomForest():
+    print("Select directory of training peak lists")
+    peaksDir = fd.askdirectory(initialdir = os.getcwd(),title = "Select directory of training peak lists")
+    peaksDir = peaksDir.replace(os.getcwd()+"/","")+"/"
+    print("Selected Dir: "+peaksDir)
+
+    print("Select peak alignment file")
+    peakAlignmentFile = fd.askopenfilename(initialdir = os.getcwd(),title = "Select peak alignment file")
+    peakAlignmentFile = peakAlignmentFile.replace(os.getcwd()+"/","")
+    print("Selected Dir: "+peakAlignmentFile)
+
+    print("Select directory of testing peak lists")
+    testPeaksDir = fd.askdirectory(initialdir = os.getcwd(),title = "Select directory of testing peak lists")
+    testPeaksDir = testPeaksDir.replace(os.getcwd()+"/","")+"/"
+    print("Selected Dir: "+testPeaksDir)
+
+    thresh = input("Maximal peak detection distance (default = 5) : ")
+    os.system("python3 randomForest.py " + peaksDir + " " + peakAlignmentFile + " " + testPeaksDir + " " + thresh )
+
+
 
 
 def launchPeakAlignment():
@@ -70,7 +90,7 @@ def launchNeuralNetwork():
 run = True
 while(run == True):
     print("### MAIN MENU ###")
-    print("0 = Exit\n4 = Density plot from raw file\n1 = Perform Peak Identification (via PEAX)\n2 = Perform Peak Alignement\n3 = Train an MLP classifier and predict")
+    print("0 = Exit\n1 = Density plot from raw file\n2 = Perform Peak Identification (via PEAX)\n3 = Perform Peak Alignement\n4 = Random forest\n5 = Train an MLP classifier and predict")
 
     while True:
         try:
@@ -82,14 +102,17 @@ while(run == True):
     if(choice==0):
         run = False
         print("Exiting program")
-    elif(choice==4):
+    elif(choice==41):
         launchDensityPlot()
     elif(choice==1):
         launchPeakDetection()
     elif(choice==2):
         launchPeakAlignment()
-    elif(choice==3):
+    elif(choice==4):
+        launchRandomForest()
+    elif(choice==5):
         launchNeuralNetwork()
+
 
     else:
         print("invalid input")
