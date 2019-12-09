@@ -6,22 +6,28 @@ import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import cross_val_score
 from scipy.spatial import distance
 import sys
 
 basePath = "Data/"
 outPath = "out/"
-peaxDataPath = basePath + "training_peakIdentification/" #candy_peax_processed/candy_peax
+peaxDataPath = basePath + "training_data_peakLists/" #candy_peax_processed/candy_peax
 fileCategoriesPath = basePath + "labels_training_data.csv"
 testingPeaxPath = basePath + "testing_peakIdentification/"
-testingPeakAlignmentsPath = basePath + "testing_peakList.csv"
-peakAlignmentsPath = basePath + "peaksList.csv"
+testingPeakAlignmentsPath = basePath + "testing_data_peakLists/"
+peakAlignmentsPath = "peakAlignment.csv"
 
 
-def getIntensityMatrixAndLabels(peakListsFolder, peakAlignmentFile, isTraining = 1,distanceThreshold = 5):
+def getIntensityMatrixAndLabels(peakListsFolder,peakAlignmentFile,distanceThreshold = 5,labelsFile= "Data/labels_training_data.csv"):
+    # Return an matrix wich rows corresponds to one peak list to peak list folder and rows to to the signal of a peak for each peak coordinates in the peak alignement file
+    # and the class label of each peak list in the same order as they appear in the matrix
+    print("\n\n -=Generating Density Matrix=- \n\n" )
 
     PA = pd.read_csv(peakAlignmentFile,low_memory=False, sep="\t", comment='#')
+    peakIndices = list(PA.index.values)
     peakCoor = PA[['t','r']].to_numpy().tolist()
+
 
     fileNamesList = []
     PLCoordinates = []
@@ -30,13 +36,13 @@ def getIntensityMatrixAndLabels(peakListsFolder, peakAlignmentFile, isTraining =
     for entry in sorted(os.listdir(peakListsFolder)): #for every object in the directory
         if os.path.isfile(os.path.join(peakListsFolder, entry)): #is it is a file
             if "lock" not in entry: #filter out locked files
-                PL = pd.read_csv(peakListsFolder+entry,low_memory=False, sep="\t", comment='#')
+                PL = pd.read_csv(peakListsFolder+"/"+entry,low_memory=False, sep="\t", comment='#')
                 PLCoordinates.append(PL[['t','r']].to_numpy().tolist())
                 PLCIntensities.append(PL['signal'].to_numpy().tolist())
                 fileNamesList.append(PL.to_numpy()[1][0])
 
     labels = []
-    labelsF = pd.read_csv(fileCategoriesPath,low_memory=False, sep="\t", comment='#')
+    labelsF = pd.read_csv(labelsFile,low_memory=False, sep="\t", comment='#')
     for f in fileNamesList:
         r = labelsF.loc[labelsF['file'] == f]
         if(r.empty == False):
@@ -80,22 +86,30 @@ def getAllCsvAsDataFrame(path, sep):
     return pd.concat(dfs, sort=False)
 
 def main(peakListsFolder = peaxDataPath, peakAlignmentFile = peakAlignmentsPath, testPeaksList = testingPeakAlignmentsPath, distanceThreshold=5):
-    Mtrain, y_train = getIntensityMatrixAndLabels(peakListsFolder,peakAlignmentFile)
+    Mtrain, labels = getIntensityMatrixAndLabels(peakListsFolder,peakAlignmentFile)
     
     scaler = StandardScaler()
     scaler.fit(Mtrain)
     X_train = scaler.transform(Mtrain)
     
-    sns.heatmap(X_train, yticklabels=y_train)
+    sns.heatmap(X_train, yticklabels=labels)
     plt.show()
+    
+    if (input("Perform 5-fold cross-validation (Y/N)").upper() == "Y"):
+
+        print(" Performing 5-fold cross-validation with training data \n" )
+    
+        clf = RandomForestClassifier(n_estimators=1000, random_state=0)
+        scores = cross_val_score(clf, X_train, labels, cv=5)
+        print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() / 2))
     
     # encode y value to decimal values
     labelencoder = LabelEncoder()
-    y_train = labelencoder.fit_transform(y_train)
+    labels = labelencoder.fit_transform(labels)
     
     # Create Mtest matrix
     testPeakData = getAllCsvAsDataFrame(testPeaksList, '\t').to_numpy()
-    X_test, labels = getIntensityMatrixAndLabels(testPeaksList,peakAlignmentFile)
+    X_test, _ = getIntensityMatrixAndLabels(testPeaksList,peakAlignmentFile,distanceThreshold)
     
     scaler = StandardScaler()
     scaler.fit(X_test)
@@ -106,7 +120,7 @@ def main(peakListsFolder = peaxDataPath, peakAlignmentFile = peakAlignmentsPath,
     
     # apply the random forest classifier
     regressor = RandomForestClassifier(n_estimators=1000, random_state=0)
-    regressor.fit(X_train, y_train)
+    regressor.fit(X_train, labels)
     y_pred = regressor.predict(X_test)
     
     y_pred = list(labelencoder.inverse_transform(y_pred))
