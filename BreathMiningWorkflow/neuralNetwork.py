@@ -88,15 +88,15 @@ def main(peakListsFolder,peakAlignmentFile,distanceThreshold=5,labelsFile = "Dat
 
     print(" Scaling signals in intensity matrix \n" )
 
-    sns.clustermap(intensityMatrix, yticklabels= labels)
-    plt.show()
+    # sns.clustermap(intensityMatrix, yticklabels= labels)
+    # plt.show()
 
     scaler = StandardScaler()
     scaler.fit(intensityMatrix)
     intensityMatrix = scaler.transform(intensityMatrix)
 
-    sns.clustermap(intensityMatrix, yticklabels= labels)
-    plt.show()
+    # sns.clustermap(intensityMatrix, yticklabels= labels)
+    # plt.show()
 
 
     if (input("Perform 5-fold cross-validation (Y/N)") == "Y"):
@@ -122,14 +122,12 @@ def main(peakListsFolder,peakAlignmentFile,distanceThreshold=5,labelsFile = "Dat
 
 
     testingX, testingY  = getIntensityMatrixAndLabels(predictPeakLists,peakAlignmentFile,distanceThreshold,labelsFile)
-    print(len(testingX))
-    print(testingY)
+
     scaler.fit(testingX)
     testingX = scaler.transform(testingX)
 
 
     prediction = clfFinal.predict(testingX)
-    print(prediction)
 
 
     outputFile = input("Save prediction as:  ")
