@@ -12,12 +12,11 @@ import sys
 basePath = "Data/"
 outPath = "out/"
 peaxDataPath = basePath + "training_peakIdentification/" #candy_peax_processed/candy_peax
-fileCategoriesPath = basePath + "labels_training.csv"
+fileCategoriesPath = basePath + "labels_training_data.csv"
 testingPeaxPath = basePath + "testing_peakIdentification/"
 testingPeakAlignmentsPath = basePath + "testing_peakList.csv"
 peakAlignmentsPath = basePath + "peaksList.csv"
-indicatorMatrixPath = outPath + "indicatorMatrix.csv"
-predictedLabelsPath = outPath + "predictedLabels.csv"
+
 
 def getIntensityMatrixAndLabels(peakListsFolder, peakAlignmentFile, isTraining = 1,distanceThreshold = 5):
 
@@ -96,7 +95,7 @@ def main(peakListsFolder = peaxDataPath, peakAlignmentFile = peakAlignmentsPath,
     
     # Create Mtest matrix
     testPeakData = getAllCsvAsDataFrame(testPeaksList, '\t').to_numpy()
-    X_test, labels = getIntensityMatrixAndLabels(testingPeaxPath,peakAlignmentsPath)
+    X_test, labels = getIntensityMatrixAndLabels(testPeaksList,peakAlignmentFile)
     
     scaler = StandardScaler()
     scaler.fit(X_test)
@@ -113,10 +112,13 @@ def main(peakListsFolder = peaxDataPath, peakAlignmentFile = peakAlignmentsPath,
     y_pred = list(labelencoder.inverse_transform(y_pred))
     fileNames = np.unique(testPeakData[:,0])
     
-    f = open(predictedLabelsPath, "w")
+    outputFile = input("Save prediction as:  ")
+    f = open(outputFile, "w")
     for i in range(len(fileNames)):
         f.write("{}\t{}\n".format(fileNames[i],y_pred[i]))
     f.close()
+    
+    print("Prediction has been saved as: " + outputFile)
 
 if __name__ == "__main__":
     main(sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4]))
