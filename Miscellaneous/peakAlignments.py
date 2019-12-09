@@ -19,7 +19,8 @@ from scipy.interpolate import griddata
 import seaborn as sns
 
 from itertools import cycle
-cycol = cycle('bbggrrccmmkk')
+
+palette = cycle(sns.color_palette().as_hex())
 
 
 
@@ -65,9 +66,8 @@ def main(rawDir, peaksDir, distanceThreshold):
     linked = linkage(M, 'single')
     alignementOrder = np.delete(np.array(linked),np.s_[2,3],1).astype(int) #Get the pair of peak lists to align and in which order to align
 
-
-    # plt.figure(figsize=(10, 7))
-    # dendrogram(linked, labels=range(0,len(alignementOrder)))
+    #
+    # dendrogram(linked)
     # plt.show()
 
     print("\n--==Performing pairwise peak alignment==--\n")
@@ -112,26 +112,24 @@ def main(rawDir, peaksDir, distanceThreshold):
                 nodesAlignements[alignementIndex].append(nodesAlignements[pairs[1]][column])
 
 
-        for i in unusedPeaks:
+        for i in unusedPeaks[:]:
             if i in usedPeaks:
                 unusedPeaks.remove(i)
 
-        for j in unusedPeaks:
+        for j in unusedPeaks: #Adding the peaks that haven't been paired previously
             nodesAlignements[alignementIndex].append(nodesAlignements[pairs[1]][j])
 
-        print("\nPeaklist {} (lenght = {}) and {} (lenght = {}) have been aligned: \nPeaks paired: {} Total peaks in aligned peaklist: {}\n ".format(pairs[0],len(nodesAlignements[pairs[0]]),pairs[1],len(nodesAlignements[pairs[1]]),nPaired,len(nodesAlignements[alignementIndex])))
-        plt.scatter(np.array(nodesAlignements[pairs[0]]).transpose()[0], np.array(nodesAlignements[pairs[0]]).transpose()[1], c="b",marker="3")
-        plt.scatter(np.array(nodesAlignements[pairs[1]]).transpose()[0], np.array(nodesAlignements[pairs[1]]).transpose()[1], c="b",marker="3")
+        print("\nPeaklist {} (lenght = {}) and {} (lenght = {}) have been aligned: \nPeaks paired: {}\nTotal peaks in aligned peaklist: {}\n ".format(pairs[0],len(nodesAlignements[pairs[0]]),pairs[1],len(nodesAlignements[pairs[1]]),nPaired,len(nodesAlignements[alignementIndex])))
+        plt.scatter(np.array(nodesAlignements[pairs[0]]).transpose()[0], np.array(nodesAlignements[pairs[0]]).transpose()[1], c=next(palette),marker=".")
+        plt.scatter(np.array(nodesAlignements[pairs[1]]).transpose()[0], np.array(nodesAlignements[pairs[1]]).transpose()[1], c=next(palette),marker=".")
 
 
-    finalAlignement = max(nodesAlignements, key=nodesAlignements.get) # key of the final alignement of all the peaklists
+
+    finalAlignement = max(nodesAlignements, key=int) # key of the final alignement of all the peaklists
 
     if (input("Print plot ? (Y/N)") == "Y"):
-        plt.scatter(np.array(nodesAlignements[finalAlignement]).transpose()[0], np.array(nodesAlignements[finalAlignement]).transpose()[1], c="red",marker = "X" )
+        plt.scatter(np.array(nodesAlignements[finalAlignement]).transpose()[0], np.array(nodesAlignements[finalAlignement]).transpose()[1], c="black",marker = "x" )
         plt.show()
-
-    # sns.heatmap(distMat)
-    # plt.show()
 
 
     outputFile = input("Save final aligned peaks list as:  ")
@@ -146,4 +144,4 @@ def main(rawDir, peaksDir, distanceThreshold):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2], sys.argv[3])
+        main(sys.argv[1], sys.argv[2], sys.argv[3])
