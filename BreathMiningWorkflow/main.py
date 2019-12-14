@@ -14,6 +14,7 @@ def launchDensityPlot():
 
     os.system("python3 densityPlot.py " + paF.replace(os.getcwd()+"/","") )
 
+
 def launchPeakDetection():
 
     print("Select directory of raw IMS/MMC file")
@@ -25,6 +26,7 @@ def launchPeakDetection():
 
     os.system("python3 peakIdentification.py " + ipD.replace(os.getcwd()+"/","")+"/" + " " + opD.replace(os.getcwd()+"/","")+"/" + " " + paF.replace(os.getcwd()+"/","")+"/" )
 
+
 def launchRandomForest():
     print("Select directory of training peak lists")
     peaksDir = fd.askdirectory(initialdir = os.getcwd(),title = "Select directory of training peak lists")
@@ -35,6 +37,11 @@ def launchRandomForest():
     peakAlignmentFile = fd.askopenfilename(initialdir = os.getcwd(),title = "Select peak alignment file")
     peakAlignmentFile = peakAlignmentFile.replace(os.getcwd()+"/","")
     print("Selected Dir: "+peakAlignmentFile)
+    
+    print("Select class label file")
+    labFi = fd.askopenfilename(initialdir = os.getcwd(),title = "Select class label file")
+    labFi = labFi.replace(os.getcwd()+"/","")
+    print("Selected Dir: "+labFi)
 
     print("Select directory of testing peak lists")
     testPeaksDir = fd.askdirectory(initialdir = os.getcwd(),title = "Select directory of testing peak lists")
@@ -42,8 +49,7 @@ def launchRandomForest():
     print("Selected Dir: "+testPeaksDir)
 
     thresh = input("Maximal peak detection distance (default = 5) : ")
-    os.system("python3 randomForest.py " + peaksDir + " " + peakAlignmentFile + " " + testPeaksDir + " " + thresh )
-
+    os.system("python3 randomForest.py " + peaksDir + " " + peakAlignmentFile + " "+ labFi + " " + testPeaksDir + " " + thresh )
 
 
 
@@ -62,10 +68,8 @@ def launchPeakAlignment():
     os.system("python3 peakAlignments.py " + rawDir + " " + peaksDir + " " + thresh )
 
 
-
 def launchIndicatorMatrix():
     print("not ready")
-
 
 
 def launchNeuralNetwork():
@@ -86,6 +90,7 @@ def launchNeuralNetwork():
 
     thresh = input("Maximal peak detection distance (default = 5) : ")
     os.system("python3 neuralNetwork.py " + peaksDir + " " + peakAlignmentFile + " " + thresh + " " + labFi)
+
 
 run = True
 while(run == True):

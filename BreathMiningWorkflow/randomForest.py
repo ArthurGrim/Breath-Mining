@@ -6,26 +6,26 @@ import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import cross_val_score
-from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
 from sklearn.feature_selection import SelectFromModel
 from scipy.spatial import distance
-from sklearn.externals.six import StringIO  
+from six import StringIO  
 from IPython.display import Image  
 from sklearn.tree import export_graphviz
 import pydotplus
+import sys
 
 basePath = "Data/"
 outPath = "out/"
 peaxDataPath = basePath + "training_data_peakLists/" #candy_peax_processed/candy_peax
-fileCategoriesPath = basePath + "labels_training_data.csv"
+classLabelsPath = basePath + "labels_training_data.csv"
 testingPeaxPath = basePath + "testing_peakIdentification/"
 testingPeakAlignmentsPath = basePath + "testing_data_peakLists/"
 peakAlignmentsPath = "peakAlignment.csv"
 
 
-def getIndicatorMatrixAndLabels(peakListsFolder,peakAlignmentFile,distanceThreshold = 5, labelsFile= "Data/labels_training_data.csv"):
+def getIndicatorMatrixAndLabels(peakListsFolder,peakAlignmentFile, labelsFile = classLabelsPath, distanceThreshold = 5):
     # Return an matrix wich rows corresponds to one peak list to peak list folder and rows to to the signal of a peak for each peak coordinates in the peak alignement file
     # and the class label of each peak list in the same order as they appear in the matrix
     print("\n\n -=Generating Density Matrix=- \n\n" )
@@ -124,8 +124,9 @@ def showMoreImportantFeaturesTree(clf, X_train, y_train):
     Image(graph.create_png())
 
 
-def main(peakListsFolder = peaxDataPath, peakAlignmentFile = peakAlignmentsPath, testPeaksList = testingPeakAlignmentsPath, distanceThreshold=5):
-    X_train, y_train = getIndicatorMatrixAndLabels(peakListsFolder,peakAlignmentFile)
+def main(peakListsFolder = peaxDataPath, peakAlignmentFile = peakAlignmentsPath, classLabels = classLabelsPath, testPeaksList = testingPeakAlignmentsPath, distanceThreshold=5):
+    
+    X_train, y_train = getIndicatorMatrixAndLabels(peakListsFolder,peakAlignmentFile,classLabels)
     sns.heatmap(X_train, yticklabels=y_train)
     plt.show()
     
@@ -141,12 +142,12 @@ def main(peakListsFolder = peaxDataPath, peakAlignmentFile = peakAlignmentsPath,
         ytestTotal = np.array([])
         ypredTotal = np.array([])
         for i in range(50):
-            X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=0.8, random_state=42)
+            X_train2, X_test2, y_train2, y_test2 = train_test_split(X_train, y_train, test_size=0.3, random_state=42)
             clf = RandomForestClassifier(n_estimators=1000, random_state=0)
-            clf.fit(X_train, y_train)
-            y_pred = clf.predict(X_test)
+            clf.fit(X_train2, y_train2)
+            y_pred = clf.predict(X_test2)
             
-            ytestTotal = np.append(y_test, ytestTotal)
+            ytestTotal = np.append(y_test2, ytestTotal)
             ypredTotal = np.append(y_pred, ypredTotal)
         
         # show confusion matrix
@@ -180,4 +181,4 @@ def main(peakListsFolder = peaxDataPath, peakAlignmentFile = peakAlignmentsPath,
 # uncomment to use default values for directories
 #main()
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4]))
+    main(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], int(sys.argv[5]))

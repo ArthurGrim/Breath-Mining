@@ -24,3 +24,6 @@ import_or_install("itertools")
 import_or_install("tkinter")
 import_or_install("munkres")
 import_or_install("sklearn")
+import_or_install("six")
+
+print("All packages were imported or installed")
