@@ -4,15 +4,17 @@ import pandas as pd
 import seaborn as sns; sns.set()
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import cross_val_score
 from sklearn.tree import DecisionTreeClassifier
-from sklearn import tree
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
+from sklearn.feature_selection import SelectFromModel
 from scipy.spatial import distance
-import sys
+from sklearn.externals.six import StringIO  
+from IPython.display import Image  
+from sklearn.tree import export_graphviz
+import pydotplus
 
 basePath = "Data/"
 outPath = "out/"
@@ -23,7 +25,7 @@ testingPeakAlignmentsPath = basePath + "testing_data_peakLists/"
 peakAlignmentsPath = "peakAlignment.csv"
 
 
-def getIndicatorMatrixAndLabels(peakListsFolder,peakAlignmentFile,distanceThreshold = 5,isTest = False, labelsFile= "Data/labels_training_data.csv"):
+def getIndicatorMatrixAndLabels(peakListsFolder,peakAlignmentFile,distanceThreshold = 5, labelsFile= "Data/labels_training_data.csv"):
     # Return an matrix wich rows corresponds to one peak list to peak list folder and rows to to the signal of a peak for each peak coordinates in the peak alignement file
     # and the class label of each peak list in the same order as they appear in the matrix
     print("\n\n -=Generating Density Matrix=- \n\n" )
@@ -74,29 +76,9 @@ def getIndicatorMatrixAndLabels(peakListsFolder,peakAlignmentFile,distanceThresh
 
         IM.append(row)
     
-    giniIndexes = np.array([])
     IM = np.array(IM)
-    if isTest == False:  
-        giniIndexes = getGiniTopDiscriminatingIndexes(IM,labels)
     
-    return IM, labels, giniIndexes
-
-def getGiniTopDiscriminatingIndexes(IM,labels):
-    peakFHalls = np.array([np.zeros(IM.shape[0])])
-    peakFCitrus = np.array([np.zeros(IM.shape[0])])
-    
-    for i in range(len(labels)):
-        if labels[i] == 'halls':
-            peakFHalls = np.sum([peakFHalls, IM[:,i]], axis=0)
-        elif labels[i] == 'citrus':
-            peakFCitrus = np.sum([peakFCitrus, IM[:,i]], axis=0)
-    
-    frequencies = np.sum([peakFHalls,peakFCitrus], axis=0)
-    peakFHalls = np.divide(peakFHalls,frequencies)
-    peakFCitrus = np.divide(peakFCitrus,frequencies)
-    giniIndexes = np.argsort(np.multiply(peakFHalls,peakFCitrus))[0,-5:]
-    
-    return giniIndexes
+    return IM.transpose(), labels
    
 
 def getAllCsvAsDataFrame(path, sep):
@@ -108,11 +90,43 @@ def getAllCsvAsDataFrame(path, sep):
             dfs.append(data)
     return pd.concat(dfs, sort=False)
 
+
+def showMoreImportantFeaturesTree(clf, X_train, y_train):
+     # extract 5 more important features
+    sfm = SelectFromModel(clf, threshold=-np.inf, max_features=5)
+    sfm.fit(X_train, y_train)
+    
+    feature_labels = np.array([])
+    for i in range(X_train.shape[1]):
+        feature_labels = np.append(feature_labels, "peak " + str(i))
+    
+    print("most important features:")
+    for feature_list_index in sfm.get_support(indices=True):
+        print(feature_labels[feature_list_index])
+    
+    important_indexes = np.array((sfm.get_support(indices=True)))
+    feature_important_labels = feature_labels[important_indexes]
+    X_important_train = sfm.transform(X_train)
+    
+    dot_data = StringIO()
+    
+    important_features_clf = RandomForestClassifier(n_estimators=1000, random_state=42)
+    important_features_clf.fit(X_important_train, y_train)
+    
+    estimator = important_features_clf.estimators_[15]
+    export_graphviz(estimator, out_file=dot_data,  
+                filled=True, rounded=True,
+                special_characters=True, 
+                feature_names = feature_important_labels,
+                class_names=np.unique(y_train))
+    graph = pydotplus.graph_from_dot_data(dot_data.getvalue())  
+    graph.write_png('decisionTreeImportantFeatures.png')
+    Image(graph.create_png())
+
+
 def main(peakListsFolder = peaxDataPath, peakAlignmentFile = peakAlignmentsPath, testPeaksList = testingPeakAlignmentsPath, distanceThreshold=5):
-    Mtrain, labels, giniIndexes = getIndicatorMatrixAndLabels(peakListsFolder,peakAlignmentFile)
-    Mgini = Mtrain[giniIndexes].transpose().tolist()
-    Mtrain = Mtrain.transpose().tolist()
-    sns.heatmap(Mtrain, yticklabels=labels)
+    X_train, y_train = getIndicatorMatrixAndLabels(peakListsFolder,peakAlignmentFile)
+    sns.heatmap(X_train, yticklabels=y_train)
     plt.show()
     
     if (input("Perform 5-fold cross-validation (Y/N)").upper() == "Y"):
@@ -120,14 +134,14 @@ def main(peakListsFolder = peaxDataPath, peakAlignmentFile = peakAlignmentsPath,
         print(" Performing 5-fold cross-validation with training data \n" )
     
         clf = RandomForestClassifier(n_estimators=1000, random_state=0)
-        scores = cross_val_score(clf, Mtrain, labels, cv=5)
+        scores = cross_val_score(clf, X_train, y_train, cv=5)
         print("Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() / 2))
     
     if (input("Generate confussion matrix (Y/N)").upper() == "Y"):
         ytestTotal = np.array([])
         ypredTotal = np.array([])
         for i in range(50):
-            X_train, X_test, y_train, y_test = train_test_split(Mtrain, labels, test_size=0.8, random_state=42)
+            X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=0.8, random_state=42)
             clf = RandomForestClassifier(n_estimators=1000, random_state=0)
             clf.fit(X_train, y_train)
             y_pred = clf.predict(X_test)
@@ -139,30 +153,21 @@ def main(peakListsFolder = peaxDataPath, peakAlignmentFile = peakAlignmentsPath,
         print("Confusion matrix with test size = 0.3: \n")
         print(confusion_matrix(ytestTotal, ypredTotal))
     
-    # encode y value to decimal values
-    labelencoder = LabelEncoder()
-    labels = labelencoder.fit_transform(labels)
-    
     # Create Mtest matrix
     testPeakData = getAllCsvAsDataFrame(testPeaksList, '\t').to_numpy()
-    X_test, _, _ = getIndicatorMatrixAndLabels(testPeaksList,peakAlignmentFile,distanceThreshold,True)
-    X_test_gini = X_test[giniIndexes].transpose().tolist()
-    X_test = X_test.transpose().tolist()
+    X_test, _ = getIndicatorMatrixAndLabels(testPeaksList,peakAlignmentFile)
     scaler = StandardScaler()
     scaler.fit(X_test)
     X_test = scaler.transform(X_test)
     
     # apply the random forest classifier
     clf = RandomForestClassifier(n_estimators=1000, random_state=0)
-    clf.fit(Mtrain, labels)
-    y_pred = clf.predict(X_test)
-    y_pred = list(labelencoder.inverse_transform(y_pred))
-    
+    clf.fit(X_train, y_train)
+    y_pred = clf.predict(X_test)   
     fileNames = np.unique(testPeakData[:,0])
     
-    # plot gini decision tree
-    dtreeClf = tree.DecisionTreeClassifier()
-    tree.plot_tree(dtreeClf.fit(Mgini,labels)) 
+    
+    showMoreImportantFeaturesTree(clf, X_train, y_train)
     
     outputFile = input("Save prediction as:  ")
     f = open(outputFile, "w")
@@ -173,6 +178,6 @@ def main(peakListsFolder = peaxDataPath, peakAlignmentFile = peakAlignmentsPath,
     print("Prediction has been saved as: " + outputFile)
 
 # uncomment to use default values for directories
-# main()
+#main()
 if __name__ == "__main__":
-   main(sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4]))
+    main(sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4]))
